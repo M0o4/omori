@@ -18,13 +18,13 @@ impl TcpServer {
 }
 
 impl Server for TcpServer {
-  fn start<T: StreamHandler + Send + Sync + 'static>(&self, stream_handel: T) {
+  fn start<T: StreamHandler + Send + Sync + 'static>(&self, stream_handler: T) {
     let listener = TcpListener::bind(format!("{}:{}", self.host, self.port))
       .unwrap_or_else(|err| {
         panic!("Failed to bind TcpListener, error: {}", err);
       });
 
-    let handler = Arc::new(stream_handel);
+    let handler = Arc::new(stream_handler);
 
     for stream in listener.incoming() {
       match stream {
@@ -32,7 +32,7 @@ impl Server for TcpServer {
           let handler = handler.clone();
           thread::spawn(move || {
             handler
-              .handle_client(stream)
+              .handle_connection(stream)
               .unwrap_or_else(|error| eprintln!("{}", error));
           });
         }
@@ -47,7 +47,7 @@ pub trait Server {
 }
 
 pub trait StreamHandler {
-  fn handle_client(&self, stream: TcpStream) -> Result<(), io::Error>;
+  fn handle_connection(&self, stream: TcpStream) -> Result<(), io::Error>;
 }
 
 pub struct TcpHandler {}
@@ -59,7 +59,7 @@ impl TcpHandler {
 }
 
 impl StreamHandler for TcpHandler {
-  fn handle_client(&self, mut stream: TcpStream) -> Result<(), io::Error> {
+  fn handle_connection(&self, mut stream: TcpStream) -> Result<(), io::Error> {
     let mut buffer = [0; 4096];
 
     loop {
